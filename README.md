@@ -6,7 +6,7 @@
 
 ### Демо сайта
 
-**[Открыть ФотоЛист](https://fotolist-print.netlify.app/)**
+**[Открыть ФотоЛист](https://oldzepp.github.io/fotolist/)**
 
 ### Возможности
 
