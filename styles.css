@@ -113,3 +113,8 @@ body{overflow-x:clip}
 body.lightbox-locked{overflow:hidden}
 @media(max-width:700px){.lightbox{padding:9px}.lightbox-content{height:93dvh}.lightbox figure{max-width:100%;width:100%}.lightbox figure img{max-height:calc(100% - 96px)}.lightbox button{width:39px;height:39px;font-size:29px}.lightbox-close{right:8px;top:8px}.lightbox-prev{left:7px;top:auto;bottom:9px}.lightbox-next{right:7px;top:auto;bottom:9px}.lightbox-count{bottom:22px}.photo-zoom{opacity:.85;transform:none}}
 @media(prefers-reduced-motion:reduce){.photo-zoom,.lightbox button{transition:none!important}}
+
+/* v8: валидация количества фотографий */
+.quantity-error{color:#a22e28;font-size:12px;line-height:1.5;margin:-14px 0 17px}.quantity-error[hidden]{display:none}
+#quantity[aria-invalid="true"]{border-color:#b43e38;background:#fff9f8;box-shadow:0 0 0 2px #f9dbd8}
+.summary-btn.is-disabled,.summary-btn[aria-disabled="true"]{background:#7f8f82;border-color:#7f8f82;opacity:.7;cursor:not-allowed;transform:none}

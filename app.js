@@ -3,6 +3,22 @@ const PRICE = Object.freeze({'10x15':18,'13x18':28,'15x21':42,'20x30':95});
 const RUB = new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:0});
 const byId = id => document.getElementById(id);
 let currentTotal = 0;
+const MIN_QTY = 1, MAX_QTY = 9999;
+function validQuantity(){
+  const raw = byId('quantity').value.trim();
+  if (!/^[0-9]+$/.test(raw)) return null;
+  const number = Number(raw);
+  return Number.isSafeInteger(number) && number >= MIN_QTY && number <= MAX_QTY ? number : null;
+}
+function setQuantityState(valid){
+  const input=byId('quantity'), error=byId('quantity-error'), link=byId('go-to-order');
+  input.setAttribute('aria-invalid',String(!valid));
+  error.hidden=valid;
+  link.setAttribute('aria-disabled',String(!valid));
+  link.classList.toggle('is-disabled',!valid);
+  if(valid) link.removeAttribute('tabindex'); else link.setAttribute('tabindex','-1');
+}
+
 function calculate({format, quantity, paper, urgency}) {
   if (!(format in PRICE) || !Number.isInteger(quantity) || quantity < 1 || quantity > 9999) return null;
   const base = PRICE[format] * quantity;
@@ -15,7 +31,15 @@ function calculate({format, quantity, paper, urgency}) {
 }
 function recalc(){
   const input = byId('quantity');
-  const quantity = Number(input.value);
+  const quantity = validQuantity();
+  setQuantityState(quantity !== null);
+  if(quantity===null) {
+    byId('total').textContent='—';byId('order-total').value='';currentTotal=0;
+    for(const id of ['base','paper-extra','rush-extra','discount']) byId(id).textContent='—';
+    byId('discount').closest('.summary-line').classList.remove('is-active');
+    byId('yandex-step').hidden=true;
+    return;
+  }
   const val = calculate({format:byId('format').value,quantity,paper:byId('paper').value,urgency:byId('urgency').value});
   if(!val){byId('total').textContent = '—';byId('order-total').value='';currentTotal=0;return;}
   for (const [key,id] of [['base','base'],['paperExtra','paper-extra'],['rushExtra','rush-extra']]) byId(id).textContent=RUB.format(Math.round(val[key]));
@@ -27,9 +51,29 @@ function recalc(){
     const el=byId('sum-total');el.classList.remove('is-updating');void el.offsetWidth;el.classList.add('is-updating');
   }
 }
-for(const id of ['format','quantity','paper','urgency']) byId(id).addEventListener('input',recalc);
-byId('minus').addEventListener('click',()=>{byId('quantity').value=Math.max(1,(Number(byId('quantity').value)||1)-1);recalc();});
-byId('plus').addEventListener('click',()=>{byId('quantity').value=Math.min(9999,(Number(byId('quantity').value)||0)+1);recalc();});
+for(const id of ['format','paper','urgency']) byId(id).addEventListener('input',()=>{byId('yandex-step').hidden=true;recalc();});
+byId('quantity').addEventListener('input',()=>{
+  const input=byId('quantity');
+  // Не допускаем отрицательные значения и ноль даже при ручном вводе.
+  if (input.value !== '' && Number(input.value) <= 0) input.value='1';
+  byId('yandex-step').hidden=true;
+  recalc();
+});
+byId('quantity').addEventListener('blur',()=>{
+  const input=byId('quantity');
+  if(input.value !== '' && validQuantity()===null){
+    // Некорректный текст не превращаем в заказ: оставляем ошибку до исправления.
+    recalc();
+  }
+});
+byId('minus').addEventListener('click',()=>{byId('quantity').value=Math.max(MIN_QTY,(validQuantity()??MIN_QTY)-1);byId('yandex-step').hidden=true;recalc();});
+byId('plus').addEventListener('click',()=>{byId('quantity').value=Math.min(MAX_QTY,(validQuantity()??0)+1);byId('yandex-step').hidden=true;recalc();});
+byId('go-to-order').addEventListener('click',event=>{
+  if(validQuantity()===null || currentTotal<=0){
+    event.preventDefault();
+    recalc();byId('quantity').focus();
+  }
+});
 byId('customer-phone').addEventListener('input',()=>byId('customer-phone').setCustomValidity(''));
 byId('photos-url').addEventListener('input',()=>byId('photos-url').setCustomValidity(''));
 function buildYandexUrl(){
@@ -60,13 +104,16 @@ byId('order-form').addEventListener('submit',event=>{
   const form=event.currentTarget;const phone=byId('customer-phone');
   const digits=phone.value.replace(/\D/g,'');
   phone.setCustomValidity((digits.length===11&&(digits[0]==='7'||digits[0]==='8'))?'':'Введите российский номер из 11 цифр, например +7 999 123-45-67');
+  if(validQuantity()===null || currentTotal<=0){
+    byId('form-message').textContent='Укажите целое количество фотографий от 1 до 9999.';
+    byId('quantity').focus();recalc();return;
+  }
   if(!form.reportValidity())return;
   const photos=byId('photos-url');
   if(!/^https:\/\/disk\.yandex\.(ru|com)\//i.test(photos.value)){
     photos.setCustomValidity('Укажите ссылку на папку Яндекс Диска (https://disk.yandex.ru/...)');photos.reportValidity();return;
   }
   photos.setCustomValidity('');
-  if(!currentTotal){byId('form-message').textContent='Укажите корректное количество фотографий.';byId('quantity').focus();return;}
   const yandexUrl=buildYandexUrl();
   const message=byId('form-message');message.classList.remove('success');
   if(!yandexUrl){message.textContent='Прием заказов еще не подключен: администратору нужно указать адрес формы и идентификаторы вопросов в yandex-config.js. Никакие данные не отправлены.';return;}
