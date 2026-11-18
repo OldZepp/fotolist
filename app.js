@@ -54,17 +54,22 @@ function recalc(){
 for(const id of ['format','paper','urgency']) byId(id).addEventListener('input',()=>{byId('yandex-step').hidden=true;recalc();});
 byId('quantity').addEventListener('input',()=>{
   const input=byId('quantity');
-  // Не допускаем отрицательные значения и ноль даже при ручном вводе.
-  if (input.value !== '' && Number(input.value) <= 0) input.value='1';
+  // Поле текстовое с цифровой клавиатурой: знак минуса, e и дроби
+  // физически не сохраняются в значении, включая вставку из буфера.
+  const start=input.selectionStart;
+  const raw=input.value;
+  const clean=raw.replace(/[^0-9]/g,'').slice(0,4);
+  if(raw!==clean){
+    const before=raw.slice(0,start ?? raw.length).replace(/[^0-9]/g,'').slice(0,4).length;
+    input.value=clean;
+    input.setSelectionRange(before,before);
+  }
   byId('yandex-step').hidden=true;
   recalc();
 });
 byId('quantity').addEventListener('blur',()=>{
-  const input=byId('quantity');
-  if(input.value !== '' && validQuantity()===null){
-    // Некорректный текст не превращаем в заказ: оставляем ошибку до исправления.
-    recalc();
-  }
+  // Ноль и пустое поле остаются ошибкой: не исправляем их незаметно.
+  recalc();
 });
 byId('minus').addEventListener('click',()=>{byId('quantity').value=Math.max(MIN_QTY,(validQuantity()??MIN_QTY)-1);byId('yandex-step').hidden=true;recalc();});
 byId('plus').addEventListener('click',()=>{byId('quantity').value=Math.min(MAX_QTY,(validQuantity()??0)+1);byId('yandex-step').hidden=true;recalc();});
